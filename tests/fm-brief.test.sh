@@ -230,6 +230,24 @@ test_herdr_lab_contract_applies_to_scouts_but_not_secondmates() {
   pass "fm-brief.sh: Herdr lab contract covers scouts and rejects secondmate misuse"
 }
 
+test_scout_requires_synced_md_and_html_reports() {
+  local home id brief
+  home="$TMP_ROOT/scout-html-home"
+  mkdir -p "$home/data"
+  id="brief-scout-html-e1"
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" firstmate --scout >/dev/null 2>&1
+  brief="$home/data/$id/brief.md"
+  assert_present "$brief" "scout brief was not scaffolded"
+  assert_grep "report.md" "$brief" "scout brief lost the agent-facing report.md deliverable"
+  assert_grep "report.html" "$brief" "scout brief did not require the human-facing report.html deliverable"
+  assert_grep "kept in sync" "$brief" "scout brief did not require the two report formats stay in sync"
+  assert_grep "not raw markdown dumped inside a" "$brief" \
+    "scout brief did not forbid dumping raw markdown into a pre block"
+  assert_grep "single self-contained file with no external assets" "$brief" \
+    "scout brief did not require a single self-contained HTML file"
+  pass "fm-brief.sh: scout brief requires synced report.md and report.html"
+}
+
 test_pause_verb_override_renders_all_brief_scaffolds() {
   local home kind id brief
   home="$TMP_ROOT/pause-verb-home"
@@ -276,4 +294,5 @@ test_herdr_lab_contract_quotes_foreign_firstmate_path
 test_herdr_lab_omission_is_loud_for_ship_and_scout
 test_herdr_lab_contract_applies_to_scouts_but_not_secondmates
 test_secondmate_no_projects_charter
+test_scout_requires_synced_md_and_html_reports
 test_pause_verb_override_renders_all_brief_scaffolds

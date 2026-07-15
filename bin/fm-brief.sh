@@ -8,8 +8,9 @@
 # of shipping a new one).
 # Usage: fm-brief.sh <task-id> <repo-name> [--scout] [--herdr-lab]
 #        fm-brief.sh <task-id> --secondmate {<project>...|--no-projects}
-#   --scout writes the scout contract instead: the deliverable is a report at
-#   data/<task-id>/report.md (no branch, no push, no PR) and the worktree is scratch.
+#   --scout writes the scout contract instead: the deliverable is a report in two
+#   synced formats, data/<task-id>/report.md and data/<task-id>/report.html
+#   (no branch, no push, no PR), and the worktree is scratch.
 #   --secondmate writes a persistent secondmate charter. The project list
 #   is cloned into the secondmate home, while the natural-language scope
 #   tells the main firstmate when to route work there; routine churn stays in its own home;
@@ -258,9 +259,13 @@ The report is the only thing that survives, so anything worth keeping must be in
    daemon error, append \`blocked: {the daemon error}\` and stop; only firstmate manages the daemon.
 
 # Definition of done
-Write your findings to \`$DATA/$ID/report.md\`.
+Write your findings in TWO synced formats at \`$DATA/$ID/\`:
+- \`report.md\` - the report for agent consumption.
+- \`report.html\` - the same findings rendered for human reading: a clean, self-contained, styled HTML page.
+Both must carry the same content; the HTML is the human view of the exact same findings, kept in sync with \`report.md\`.
+The HTML must be a real styled rendering - legible headings, tables, and code blocks - not raw markdown dumped inside a \`<pre>\`; a single self-contained file with no external assets or CDN links (inline any CSS).
 The report must stand alone: what you did, what you found, the evidence (commands run, output, file:line references), and what you recommend.
-When the report is complete, append \`done: {one-line conclusion}\` to the status file and stop.
+When both files are complete and in sync, append \`done: {one-line conclusion}\` to the status file and stop.
 If your findings reveal work that should ship (e.g. you reproduced a bug and the fix is clear), say so in the report; firstmate may promote this task in place, and you would then receive mode-specific ship instructions as a follow-up message.
 EOF
 echo "scaffolded: $BRIEF (scout; replace {TASK})"
