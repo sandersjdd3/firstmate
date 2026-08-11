@@ -63,6 +63,18 @@ If an addition needs more than a few lines of conditional detail (detail that ma
 A skill's cost is paid only by the sessions that actually load it.
 When in doubt, write the fact into the skill or doc first by patching that owner's existing language, and add only the one-line trigger to `AGENTS.md`.
 
+### Size budget
+
+`AGENTS.md` exists to control firstmate behavior: it holds control rules only - safety boundaries, authority rules, prohibitions on firstmate's own behavior, and skill-load triggers.
+Size is the result of routing everything else (operational facts, schema detail, command mechanics, rationale, history) to its owner, never the goal.
+A rule is therefore never removed, softened, or made conditional on loading a skill to hit a byte target, and the fix for a failing size check is always to route learned or conditional detail to its owner.
+A prohibition on firstmate's own behavior stays inline even when its surrounding explanation moves out: delegate the reason, never the ban.
+A sentence that delegates enumeration to a table, list, doc, or skill must not narrow the original rule's scope - two audit defects came from exactly that.
+
+The ceiling is CI-enforced: the `invariants` job in `.github/workflows/ci.yml` fails when `wc -c AGENTS.md` exceeds a single literal byte number, and that number and the reason it exists live in a comment right beside it.
+The build failing on this budget is the signal to apply the decision tree above, not to raise the number.
+Raising the ceiling is a deliberate decision the reviewer must weigh, never a routine fix for a red build; make the case that the addition genuinely belongs inline first.
+
 ## Trigger hygiene
 
 A new skill is dead weight if nothing loads it.
