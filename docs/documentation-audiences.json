@@ -233,6 +233,10 @@
       "audience": "operator-current"
     },
     {
+      "path": "docs/crew-checkout-guard.md",
+      "audience": "maintainer-architecture"
+    },
+    {
       "path": "docs/codex-app-backend.md",
       "audience": "operator-current"
     },
