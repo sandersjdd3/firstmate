@@ -2327,6 +2327,18 @@ EOF
 // "turn_end" fires at every inner turn boundary (one LLM response plus its
 // tool calls) and stays a wake NOTIFICATION touch for the watcher, never
 // current-state truth.
+//
+// Pi has no permission system and auto-approves every tool, and it loads NONE
+// of the primary's .claude/settings PreToolUse guards, so the crew-checkout
+// write-guard has to ride this extension. pi.on("tool_call", ...) can block a
+// call by returning {block: true} (verified against Pi's primary guard, same
+// mechanism). It runs bin/fm-crew-checkout-pretool-check.sh with the crew
+// worktree pinned via FM_ROOT_OVERRIDE=$WT, because this extension file lives in
+// state/ and \$FM_ROOT is the shared code root, not the crew's worktree. Only
+// the bash tool is covered here (the accident vector: cd + git into the primary
+// checkout); Pi's native file-edit tool name is not yet verified, so file-tool
+// coverage on Pi is scoped follow-up. The owner script is inert outside a crew
+// worktree, so this is safe if the topology is ever unexpected.
 import { execFile } from "node:child_process";
 const busyEvent = (state: string, event: string) =>
   new Promise<void>((resolve) => {
@@ -2335,6 +2347,18 @@ const busyEvent = (state: string, event: string) =>
       "--gen", "$BUSY_GEN", "--source", "pi-ext", "--event", event,
     ], () => resolve());
   });
+const crewCheckoutCheck = (command: string) =>
+  new Promise<{ code: number; stderr: string }>((resolve) => {
+    execFile(
+      "$FM_ROOT/bin/fm-crew-checkout-pretool-check.sh",
+      ["--command", command],
+      { env: Object.assign({}, process.env, { FM_ROOT_OVERRIDE: "$WT" }) },
+      (err: any, _stdout: string, stderr: string) => {
+        const code = err && typeof err.code === "number" ? err.code : 0;
+        resolve({ code: code, stderr: stderr || "" });
+      },
+    );
+  });
 export default function (pi: any) {
   pi.on("agent_start", () => busyEvent("busy", "agent-start"));
   pi.on("agent_settled", (_event: any, ctx: any) => {
@@ -2342,6 +2366,21 @@ export default function (pi: any) {
     return busyEvent("idle", "agent-settled");
   });
   pi.on("turn_end", () => execFile("touch", ["$TURNEND"]));
+  pi.on("tool_call", async (event: any) => {
+    if (!event || event.type !== "tool_call" || event.toolName !== "bash") return {};
+    const command = String((event.input && event.input.command) || "");
+    if (!command) return {};
+    const res = await crewCheckoutCheck(command);
+    if (res.code === 2) {
+      return {
+        block: true,
+        reason:
+          res.stderr.trim() ||
+          "denied: a crew must not write to the primary firstmate checkout; work in your own worktree",
+      };
+    }
+    return {};
+  });
 }
 EOF
       ;;

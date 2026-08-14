@@ -86,6 +86,14 @@ Two verified facts worth pinning here.
 The subagent tool presents to the model as `Agent`, and on Claude Code 2.1.217 both `Agent` and `Task` work as `permissions.deny` keys, verified by an A/B with a nonsense-name control.
 `permissions.allow` is a pre-approval list rather than an availability list, so there is no fail-closed positive allowlist.
 
+## Crew checkout write-guard
+
+The inverse-scope guard: `bin/fm-crew-checkout-pretool-check.sh` fires ONLY in a crew/scout task worktree and denies a `cd`/`git -C`/file write that reaches into the primary firstmate checkout or a sibling worktree, closing the gap that the primary-only cd-guard leaves open inside a crew worktree.
+Claude wires it in `.claude/settings.json` (self-scoping, so the same tracked file is inert in the primary and active in the crew worktree).
+Pi wires it in the generated crew extension (`state/<id>.pi-ext.ts`): a `tool_call` block that runs the checker with `--command` and `FM_ROOT_OVERRIDE=<worktree>` (needed because the extension lives outside the worktree) and returns `{block: true}` on exit 2, covering the `bash` reach-over vector.
+Codex, opencode, grok, and kimi crew wiring is scoped follow-up that mirrors each harness's existing PreToolUse mechanism; the shared decision owner already handles them once wired.
+`docs/crew-checkout-guard.md` owns the full contract, the own-worktree resolution, and the per-harness wiring table.
+
 ## Primary session start
 
 AGENTS.md section 3 remains the behavioral owner for session start, while tracked native adapters enforce it idempotently at session open through one of two tiers.
