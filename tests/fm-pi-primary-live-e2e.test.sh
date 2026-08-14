@@ -28,6 +28,36 @@ PROJECT="$LAB/project"
 AHOY_PROJECT="$LAB/ahoy-project"
 HOME_DIR="$LAB/fmhome"
 PI_VERSION=$(pi --version)
+
+# Live guard for fm-spawn's pi --tui-mode capability probe (bin/fm-spawn.sh
+# pi_tuimode_flag_for_harness). The probe reads a vendor-emitted surface (`pi
+# --help`), so a fake cannot prove it still tracks the installed pi. This guard
+# proves, against the real binary and naming the version, that help-advertisement
+# and actual launch-time acceptance of --tui-mode agree in BOTH directions, so the
+# flag rides exactly the builds that accept it. It is credential-free: the
+# "Unknown option" rejection prints during arg parsing before any provider call.
+pi_bounded() {
+  # Run pi bounded and echo combined output; we only inspect early arg-parse text.
+  ( "$@" 2>&1 & p=$!; sleep 4; kill "$p" 2>/dev/null; wait "$p" 2>/dev/null ) || true
+}
+guard_pi_tuimode_launch_capability() {
+  local out
+  if pi --help 2>/dev/null | grep -q -- '--tui-mode'; then
+    out=$(pi_bounded pi --tui-mode regular --print --no-session "tui-mode capability probe")
+    printf '%s\n' "$out" | grep -Fq "Unknown option: --tui-mode" \
+      && fail "pi $PI_VERSION advertises --tui-mode in --help but rejects it at launch; fm-spawn would pass a flag pi refuses"
+  else
+    out=$(pi_bounded pi --tui-mode regular --print --no-session "tui-mode capability probe")
+    printf '%s\n' "$out" | grep -Fq "Unknown option: --tui-mode" \
+      || fail "pi $PI_VERSION omits --tui-mode from --help but still accepts it; the probe's omit branch is vacuous on this build"
+    out=$(pi_bounded pi --print --no-session --model openai-codex/gpt-5.6-sol "tui-mode capability probe")
+    printf '%s\n' "$out" | grep -Fq "Unknown option" \
+      && fail "pi $PI_VERSION rejected an option in fm-spawn's --tui-mode-free launch shape: $out"
+  fi
+  printf 'ok - pi %s --tui-mode help-advertisement matches launch-time acceptance (fm-spawn probe live-verified)\n' "$PI_VERSION"
+}
+guard_pi_tuimode_launch_capability
+
 # shellcheck source=/dev/null
 . "$ROOT/bin/fm-operational-input.sh"
 # shellcheck disable=SC2016 # Backticks are literal prompt markup.

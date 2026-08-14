@@ -144,6 +144,8 @@
 #     __BRIEF__    absolute path to data/<task-id>/brief.md
 #     __TURNEND__  absolute path to state/<task-id>.turn-ended (for harnesses whose
 #                  turn-end signal rides the launch command, e.g. codex -c notify=[...])
+#     __PITUIMODE__ `--tui-mode regular ` on pi builds that advertise the flag, empty otherwise
+#                  (capability-detected from `pi --help`; see pi_tuimode_flag_for_harness)
 #     __PIEXT__    absolute path to state/<task-id>.pi-ext.ts (pi turn-end extension,
 #                  written by this script; outside the worktree to avoid pi's trust gate)
 #     __PITURNEND__ absolute path to .pi/extensions/fm-primary-turnend-guard.ts in a pi secondmate home
@@ -1069,11 +1071,19 @@ launch_template() {
       fi
       ;;
     opencode) printf '%s' 'OPENCODE_CONFIG_CONTENT='\''{"permission":{"*":"allow"}}'\'' opencode __MODELFLAG__--prompt "$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
+    # __PITUIMODE__ resolves to `--tui-mode regular ` only on pi builds that still
+    # advertise the flag, and to nothing otherwise. pi 0.82.0 exposed `--tui-mode`
+    # to force pi out of an experimental fullscreen TUI that buried steers; pi
+    # 0.83.0 removed the flag entirely (pi-tui renders inline in the normal
+    # scrollback buffer with no alternate-screen mode, so "regular" is the only
+    # behavior), and passing the removed flag makes pi exit with
+    # "Error: Unknown option: --tui-mode" so the crewmate never starts. The capability
+    # probe below keeps 0.82.0 launches passing the flag and omits it on 0.83.0+.
     pi|pi-signed)
       if [ "$kind" = secondmate ]; then
-        printf '%s%s' "$harness" ' --tui-mode regular __MODELFLAG____EFFORTFLAG__-e __PITURNEND__ -e __PIWATCH__ "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
+        printf '%s%s' "$harness" ' __PITUIMODE____MODELFLAG____EFFORTFLAG__-e __PITURNEND__ -e __PIWATCH__ "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
       else
-        printf '%s%s' "$harness" ' --tui-mode regular __MODELFLAG____EFFORTFLAG__-e __PIEXT__ "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
+        printf '%s%s' "$harness" ' __PITUIMODE____MODELFLAG____EFFORTFLAG__-e __PIEXT__ "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
       fi
       ;;
     # grok (Grok Build TUI): a positional prompt starts the supervised interactive
@@ -1287,6 +1297,27 @@ model_flag_for_harness() {
       printf -- '--model %s ' "$(shell_quote "$model")"
       ;;
   esac
+}
+
+# pi_tuimode_flag_for_harness: emit `--tui-mode regular ` (trailing space, matching
+# the model/effort flag convention) only when the installed pi binary still
+# advertises `--tui-mode` in its `pi --help` text, and nothing otherwise. This is a
+# capability probe rather than a version compare: pi 0.83.0 removed the flag, so
+# passing it makes pi exit with "Error: Unknown option: --tui-mode" and the crewmate
+# never starts, while pi 0.82.0 still needs it to leave the experimental fullscreen
+# TUI. Detecting from --help keeps both correct without pinning a version number.
+# `pi --help`/`pi --version` short-circuit before option validation and make no
+# network call, so this probe is cheap and offline. The real binary name (pi vs
+# pi-signed) is probed, so the answer matches the executable that will be launched.
+pi_tuimode_flag_for_harness() {
+  local harness=$1
+  case "$harness" in
+    pi|pi-signed) ;;
+    *) return 0 ;;
+  esac
+  if "$harness" --help 2>/dev/null | grep -q -- '--tui-mode'; then
+    printf -- '--tui-mode regular '
+  fi
 }
 
 effort_flag_for_harness() {
@@ -2556,8 +2587,10 @@ sq_piwatch=$(shell_quote "$PROJ_ABS/.pi/extensions/fm-primary-pi-watch.ts")
 sq_opinput=$(shell_quote "$FM_ROOT/bin/fm-operational-input.sh")
 MODELFLAG=$(model_flag_for_harness "$HARNESS" "$MODEL")
 EFFORTFLAG=$(effort_flag_for_harness "$HARNESS" "$EFFORT")
+PITUIMODE=$(pi_tuimode_flag_for_harness "$HARNESS")
 LAUNCH=${LAUNCH//__MODELFLAG__/$MODELFLAG}
 LAUNCH=${LAUNCH//__EFFORTFLAG__/$EFFORTFLAG}
+LAUNCH=${LAUNCH//__PITUIMODE__/$PITUIMODE}
 LAUNCH=${LAUNCH//__BRIEF__/$sq_brief}
 LAUNCH=${LAUNCH//__TURNEND__/$sq_turnend}
 LAUNCH=${LAUNCH//__PIEXT__/$sq_piext}

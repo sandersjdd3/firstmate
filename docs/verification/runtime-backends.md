@@ -136,6 +136,22 @@ That shared plain-Pi path is retained as disconfirming evidence against using an
 Firstmate therefore sets the exact `FM_PI_HARNESS` selection marker on both worker launch paths, while an unmarked Pi-family process remains `pi`.
 Both recorded runtime identities now classify the exact `pi-launcher` foreground command as `alive`.
 
+### Pi `--tui-mode` launch-flag capability (verified 2026-08-13, Pi 0.83.0)
+
+Pi 0.82.0 accepted `--tui-mode regular`; Pi 0.83.0 removed the flag (pi-tui renders inline in the normal scrollback buffer with no alternate-screen mode).
+`fm-spawn` no longer hardcodes the flag: `pi_tuimode_flag_for_harness` capability-detects it from `pi --help` and passes `--tui-mode regular` only where advertised.
+Verified on 2026-08-13 against Pi 0.83.0 on macOS 26.5.2 arm64:
+
+```sh
+pi --version                                             # 0.83.0
+pi --help | grep -c -- '--tui-mode'                      # 0 (flag absent)
+pi --tui-mode regular --print --no-session "probe"       # Error: Unknown option: --tui-mode
+pi --print --no-session --model google/gemini-2.5-flash "probe"   # no option error; starts
+```
+
+The captured `fm-spawn.sh` launch for a pi crew was `FM_PI_HARNESS=pi pi --model 'google/gemini-2.5-flash' --thinking 'max' -e '<state>/<id>.pi-ext.ts' "$(...)"` with no `--tui-mode`, and executing its pi portion started pi without the unknown-option error.
+The live guard `guard_pi_tuimode_launch_capability` in [`tests/fm-pi-primary-live-e2e.test.sh`](../../tests/fm-pi-primary-live-e2e.test.sh) (run with `FM_PI_LIVE_E2E=1`) refreshes this by asserting help-advertisement and launch-time acceptance of `--tui-mode` agree in both directions, failing with the installed pi version; the portable regression is `test_pi_tui_mode_flag_tracks_help_capability` in [`tests/fm-spawn-dispatch-profile.test.sh`](../../tests/fm-spawn-dispatch-profile.test.sh).
+
 Backend applicability was reviewed across every spawn adapter.
 Tmux needs the exact `pi-launcher`, `pi-signed`, `pi`, and `Pi` process identities for recovery-grade liveness.
 Herdr uses native registered-agent state and needs no process-name branch.

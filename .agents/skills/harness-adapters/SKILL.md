@@ -276,8 +276,10 @@ The follow-up was verified in the interactive TUI; `opencode run` can exit befor
 | Interrupt | single Escape |
 
 Pi has no permission system, so crewmates are always autonomous.
-Pi's `packages/coding-agent/docs/settings.md` UI and display section documents `regular` as the `tuiMode` default, `fullscreen` as experimental, and `--tui-mode` as its startup override; fullscreen can bury steers by rewriting scrollback, so `fm-spawn` always passes `--tui-mode regular` for Pi-family crews.
-`pi-signed` is the signed wrapper identity verified on version 0.82.0 and exposes the same CLI and TUI behavior as Pi.
+Pi 0.82.0 exposed a `--tui-mode` startup override (`regular` default, `fullscreen` experimental) and `fm-spawn` passed `--tui-mode regular` to keep steers out of a scrollback-rewriting fullscreen TUI.
+Pi 0.83.0 removed `--tui-mode` entirely (pi-tui renders inline in the normal scrollback buffer with no alternate-screen mode, so "regular" is the only behavior); passing the removed flag makes pi exit with `Error: Unknown option: --tui-mode` and the crew never starts.
+`fm-spawn` therefore capability-detects the flag from `pi --help` (`pi_tuimode_flag_for_harness`) and passes `--tui-mode regular` only on builds that still advertise it, omitting it otherwise; the live guard in `tests/fm-pi-primary-live-e2e.test.sh` proves that detection tracks the installed pi.
+`pi-signed` is the signed wrapper identity that exposes the same CLI and TUI behavior as Pi (the shared launch shape and process ancestry were verified on 0.82.0).
 Firstmate launches the selected executable name from `PATH`, records `pi-signed` without normalization, and refuses rather than falling back to `pi` when that wrapper is unavailable.
 The observed signed process tree is an exact `pi-signed` wrapper parent with the Pi application as its child, while tmux reports the foreground command as the exact `pi-launcher` name for both selected executables.
 The installed plain `pi` command also execs that signed launcher, so `FM_PI_HARNESS=pi-signed` is the authoritative selection marker and shared unmarked ancestry remains `pi`.
